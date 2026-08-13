@@ -2,18 +2,21 @@ import { CalendarMonth, Close } from '@mui/icons-material'
 import { Box, Button, IconButton, Typography } from '@mui/joy'
 import moment from 'moment'
 import { useMemo, useState } from 'react'
+
 import DueDatePickerModal from './DueDatePickerModal'
 
 const DueDatePickerField = ({
   dueDateOnly,
   dueTime,
-  useCustomTime,
+  emptyDisplay = 'icon-text',
+  onApply,
+  onClear,
   onDueDateChange,
   onDueTimeChange,
   onUseCustomTimeChange,
-  onClear,
-  emptyDisplay = 'icon-text',
   size = 'sm',
+  title = 'Due Date',
+  useCustomTime,
 }) => {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -22,11 +25,19 @@ const DueDatePickerField = ({
     dueTime: nextTime,
     useCustomTime: nextUseCustomTime,
   }) => {
-    onDueDateChange?.({ target: { value: nextDate || '' } })
-    onUseCustomTimeChange?.(nextUseCustomTime)
-    onDueTimeChange?.({
-      target: { value: nextUseCustomTime && nextTime ? nextTime : '' },
-    })
+    if (onApply) {
+      onApply({
+        dueDateOnly: nextDate,
+        dueTime: nextTime,
+        useCustomTime: nextUseCustomTime,
+      })
+    } else {
+      onDueDateChange?.({ target: { value: nextDate || '' } })
+      onUseCustomTimeChange?.(nextUseCustomTime)
+      onDueTimeChange?.({
+        target: { value: nextUseCustomTime && nextTime ? nextTime : '' },
+      })
+    }
     setIsOpen(false)
   }
 
@@ -117,6 +128,7 @@ const DueDatePickerField = ({
       <DueDatePickerModal
         open={isOpen}
         onClose={() => setIsOpen(false)}
+        title={title}
         dueDateOnly={dueDateOnly}
         dueTime={dueTime}
         useCustomTime={useCustomTime}
