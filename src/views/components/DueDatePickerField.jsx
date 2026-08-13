@@ -10,11 +10,13 @@ const DueDatePickerField = ({
   dueDateOnly,
   dueTime,
   emptyDisplay = 'icon-text',
+  onApply,
   onClear,
   onDueDateChange,
   onDueTimeChange,
   onUseCustomTimeChange,
   size = 'sm',
+  title = 'Due Date',
   useCustomTime,
 }) => {
   const { t } = useTranslation('chores')
@@ -25,11 +27,19 @@ const DueDatePickerField = ({
     dueTime: nextTime,
     useCustomTime: nextUseCustomTime,
   }) => {
-    onDueDateChange?.({ target: { value: nextDate || '' } })
-    onUseCustomTimeChange?.(nextUseCustomTime)
-    onDueTimeChange?.({
-      target: { value: nextUseCustomTime && nextTime ? nextTime : '' },
-    })
+    if (onApply) {
+      onApply({
+        dueDateOnly: nextDate,
+        dueTime: nextTime,
+        useCustomTime: nextUseCustomTime,
+      })
+    } else {
+      onDueDateChange?.({ target: { value: nextDate || '' } })
+      onUseCustomTimeChange?.(nextUseCustomTime)
+      onDueTimeChange?.({
+        target: { value: nextUseCustomTime && nextTime ? nextTime : '' },
+      })
+    }
     setIsOpen(false)
   }
 
@@ -120,6 +130,7 @@ const DueDatePickerField = ({
       <DueDatePickerModal
         open={isOpen}
         onClose={() => setIsOpen(false)}
+        title={title}
         dueDateOnly={dueDateOnly}
         dueTime={dueTime}
         useCustomTime={useCustomTime}
