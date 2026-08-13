@@ -81,6 +81,19 @@ test.describe('ChoreEdit', () => {
     const updatedDueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
       .toISOString()
       .slice(0, 10)
+    const updatedDueDateLabel = new Date(
+      `${updatedDueDate}T00:00:00`,
+    ).toLocaleDateString('en-US', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    })
+    const updatedDueDateShortLabel = new Date(
+      `${updatedDueDate}T00:00:00`,
+    ).toLocaleDateString('en-US', {
+      day: 'numeric',
+      month: 'short',
+    })
 
     // ── Create a simple one-off chore with a due date ───────────────────────
     await page.goto('/chores/create')
@@ -114,11 +127,27 @@ test.describe('ChoreEdit', () => {
     expect(created.assignedTo).toBe(created.assignees[0].userId)
 
     // ── Edit: change name, description, due date, and switch to Anyone ─────
+    await page.evaluate(() => localStorage.setItem('firstDayOfWeek', '1'))
     await page.goto(`/chores/${created.id}/edit`)
 
     await page.locator('input').first().fill(updatedName)
     await page.locator('.ql-editor').fill(updatedDescription)
-    await page.locator('input[type="date"]').fill(updatedDueDate)
+    await page
+      .getByText('When is the next first time this task is due?')
+      .locator('..')
+      .getByRole('button')
+      .click()
+
+    const dueDateDialog = page.getByRole('dialog', { name: 'Due Date' })
+    await expect(
+      dueDateDialog.locator(
+        '.react-calendar__month-view__weekdays__weekday abbr',
+      ),
+    ).toHaveText(['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'])
+    await dueDateDialog
+      .locator(`abbr[aria-label="${updatedDueDateLabel}"]`)
+      .click()
+    await dueDateDialog.getByRole('button', { name: 'Apply' }).click()
     await page.getByLabel('Anyone').click()
 
     await page.getByRole('button', { name: 'Save' }).click()
@@ -128,7 +157,9 @@ test.describe('ChoreEdit', () => {
     await page.goto(`/chores/${created.id}/edit`)
     await expect(page.locator('input').first()).toHaveValue(updatedName)
     await expect(page.locator('.ql-editor')).toContainText(updatedDescription)
-    await expect(page.locator('input[type="date"]')).toHaveValue(updatedDueDate)
+    await expect(
+      page.getByRole('button', { name: updatedDueDateShortLabel }),
+    ).toBeVisible()
     await expect(page.getByLabel('Anyone')).toBeChecked()
 
     // ── Confirm persisted via the API too ───────────────────────────────────
