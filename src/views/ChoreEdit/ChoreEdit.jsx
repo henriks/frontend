@@ -109,6 +109,7 @@ import { useSinglePageTaskEditor } from '../../utils/TaskEditorPreferences'
 import { generateUUID } from '../../utils/UUID'
 import { sortWeekdays } from '../../utils/WeekdayUtils'
 import { useProjectFilter } from '../Chores/hooks/useProjectFilter.js'
+import DueDatePickerField from '../components/DueDatePickerField.jsx'
 import LoadingComponent from '../components/Loading.jsx'
 import RichTextEditor from '../components/RichTextEditor.jsx'
 import SubTasks from '../components/SubTask.jsx'
@@ -523,38 +524,36 @@ const ChoreEdit = () => {
     return true
   }
 
-  const handleDueDateChange = e => {
-    const dateValue = e.target.value // YYYY-MM-DD format
+  const handleDueDatePickerApply = ({
+    dueDateOnly: dateValue,
+    dueTime: timeValue,
+    useCustomTime: nextUseCustomTime,
+  }) => {
+    setDueDateOnly(dateValue)
+    setDueTime(nextUseCustomTime ? timeValue : null)
+    setUseCustomTime(nextUseCustomTime)
+
     if (!dateValue) {
-      setDueDateOnly(null)
       setDueDate(null)
       return
     }
-    setDueDateOnly(dateValue)
 
-    // Combine date with time or end of day
-    if (useCustomTime && dueTime) {
-      // Use the custom time
-      const combinedDateTime = moment(`${dateValue}T${dueTime}`).format(
-        'YYYY-MM-DDTHH:mm:00',
+    if (nextUseCustomTime && timeValue) {
+      setDueDate(
+        moment(`${dateValue}T${timeValue}`).format('YYYY-MM-DDTHH:mm:00'),
       )
-      setDueDate(combinedDateTime)
 
-      // Update frequencyMetadata.time for REPEAT_ON_TYPE frequencies
       if (REPEAT_ON_TYPE.includes(frequencyType)) {
-        setFrequencyMetadata({
-          ...frequencyMetadata,
-          time: moment(`${dateValue}T${dueTime}`).format(),
+        setFrequencyMetadata(previous => ({
+          ...previous,
+          time: moment(`${dateValue}T${timeValue}`).format(),
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        })
+        }))
       }
-    } else {
-      // Default to end of day (23:59:59) in user's timezone
-      const endOfDay = moment(dateValue)
-        .endOf('day')
-        .format('YYYY-MM-DDTHH:mm:59')
-      setDueDate(endOfDay)
+      return
     }
+
+    setDueDate(moment(dateValue).endOf('day').format('YYYY-MM-DDTHH:mm:ss'))
   }
 
   const handleDueTimeChange = e => {
@@ -1531,11 +1530,16 @@ const ChoreEdit = () => {
                             ? 'Start date'
                             : 'Date'}
                         </Typography>
-                        <Input
-                          type='date'
-                          aria-label={t('taskEditor.dueDate')}
-                          value={dueDateOnly || ''}
-                          onChange={handleDueDateChange}
+                        <DueDatePickerField
+                          title={
+                            REPEAT_ON_TYPE.includes(frequencyType)
+                              ? 'Start Date'
+                              : 'Due Date'
+                          }
+                          dueDateOnly={dueDateOnly}
+                          dueTime={dueTime}
+                          useCustomTime={useCustomTime}
+                          onApply={handleDueDatePickerApply}
                         />
                         {dueDate && (
                           <Button
