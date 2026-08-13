@@ -1,0 +1,44 @@
+name: Rebase onto upstream
+
+on:
+  schedule:
+    - cron: '15 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rebase-upstream-develop
+  cancel-in-progress: false
+
+jobs:
+  rebase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out fork
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Rebase onto upstream develop
+        env:
+          UPSTREAM_REPOSITORY: donetick/frontend
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git remote add upstream "https://github.com/${UPSTREAM_REPOSITORY}.git"
+          git fetch upstream develop
+
+          before=$(git rev-parse HEAD)
+          trap 'git rebase --abort 2>/dev/null || true' EXIT
+          git rebase upstream/develop
+          trap - EXIT
+
+          after=$(git rev-parse HEAD)
+          if [ "$before" != "$after" ]; then
+            git push --force-with-lease origin HEAD:develop
+          else
+            echo "develop is already based on upstream/develop"
+          fi
