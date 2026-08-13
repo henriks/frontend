@@ -72,6 +72,7 @@ import { getIconComponent } from '../../utils/ProjectIcons'
 import { getSafeBottomPadding } from '../../utils/SafeAreaUtils.js'
 import { generateUUID } from '../../utils/UUID'
 import { useProjectFilter } from '../Chores/hooks/useProjectFilter.js'
+import DueDatePickerField from '../components/DueDatePickerField.jsx'
 import LoadingComponent from '../components/Loading.jsx'
 import RichTextEditor from '../components/RichTextEditor.jsx'
 import SubTasks from '../components/SubTask.jsx'
@@ -280,90 +281,38 @@ const ChoreEdit = () => {
     return true
   }
 
-  const handleDueDateChange = e => {
-    const dateValue = e.target.value // YYYY-MM-DD format
+  const handleDueDatePickerApply = ({
+    dueDateOnly: dateValue,
+    dueTime: timeValue,
+    useCustomTime: nextUseCustomTime,
+  }) => {
     setDueDateOnly(dateValue)
+    setDueTime(nextUseCustomTime ? timeValue : null)
+    setUseCustomTime(nextUseCustomTime)
 
-    // Combine date with time or end of day
-    if (useCustomTime && dueTime) {
-      // Use the custom time
-      const combinedDateTime = moment(`${dateValue}T${dueTime}`).format(
-        'YYYY-MM-DDTHH:mm:00',
+    if (!dateValue) {
+      setDueDate(null)
+      return
+    }
+
+    if (nextUseCustomTime && timeValue) {
+      setDueDate(
+        moment(`${dateValue}T${timeValue}`).format('YYYY-MM-DDTHH:mm:00'),
       )
-      setDueDate(combinedDateTime)
 
-      // Update frequencyMetadata.time for REPEAT_ON_TYPE frequencies
       if (REPEAT_ON_TYPE.includes(frequencyType)) {
-        setFrequencyMetadata({
-          ...frequencyMetadata,
-          time: moment(`${dateValue}T${dueTime}`).format(),
+        setFrequencyMetadata(previous => ({
+          ...previous,
+          time: moment(`${dateValue}T${timeValue}`).format(),
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        })
+        }))
       }
-    } else {
-      // Default to end of day (23:59:59) in user's timezone
-      const endOfDay = moment(dateValue)
-        .endOf('day')
-        .format('YYYY-MM-DDTHH:mm:59')
-      setDueDate(endOfDay)
+      return
     }
+
+    setDueDate(moment(dateValue).endOf('day').format('YYYY-MM-DDTHH:mm:ss'))
   }
 
-  const handleDueTimeChange = e => {
-    const timeValue = e.target.value // HH:mm format
-    setDueTime(timeValue)
-
-    if (dueDateOnly) {
-      // Combine date with the selected time
-      const combinedDateTime = moment(`${dueDateOnly}T${timeValue}`).format(
-        'YYYY-MM-DDTHH:mm:00',
-      )
-      setDueDate(combinedDateTime)
-
-      // Update frequencyMetadata.time for REPEAT_ON_TYPE frequencies
-      if (REPEAT_ON_TYPE.includes(frequencyType)) {
-        setFrequencyMetadata({
-          ...frequencyMetadata,
-          time: moment(`${dueDateOnly}T${timeValue}`).format(),
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        })
-      }
-    }
-  }
-
-  const handleUseCustomTimeChange = checked => {
-    setUseCustomTime(checked)
-
-    if (checked) {
-      // Initialize with current time or default to 18:00
-      const defaultTime = dueTime || '18:00'
-      setDueTime(defaultTime)
-
-      if (dueDateOnly) {
-        const combinedDateTime = moment(`${dueDateOnly}T${defaultTime}`).format(
-          'YYYY-MM-DDTHH:mm:59',
-        )
-        setDueDate(combinedDateTime)
-
-        // Update frequencyMetadata.time for REPEAT_ON_TYPE frequencies
-        if (REPEAT_ON_TYPE.includes(frequencyType)) {
-          setFrequencyMetadata({
-            ...frequencyMetadata,
-            time: moment(`${dueDateOnly}T${defaultTime}`).format(),
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          })
-        }
-      }
-    } else {
-      // Revert to end of day
-      if (dueDateOnly) {
-        const endOfDay = moment(dueDateOnly)
-          .endOf('day')
-          .format('YYYY-MM-DDTHH:mm:ss')
-        setDueDate(endOfDay)
-      }
-    }
-  }
   const HandleSaveChore = () => {
     setAttemptToSave(true)
     if (!HandleValidateChore()) {
@@ -1492,42 +1441,19 @@ const ChoreEdit = () => {
                     ? t('choreEdit.startWhen')
                     : t('choreEdit.dueWhen')}
                 </Typography>
-                <Input
-                  type='date'
-                  value={dueDateOnly || ''}
-                  onChange={handleDueDateChange}
+                <DueDatePickerField
+                  title={
+                    REPEAT_ON_TYPE.includes(frequencyType)
+                      ? 'Start Date'
+                      : 'Due Date'
+                  }
+                  dueDateOnly={dueDateOnly}
+                  dueTime={dueTime}
+                  useCustomTime={useCustomTime}
+                  onApply={handleDueDatePickerApply}
                 />
                 <FormHelperText>{errors.dueDate}</FormHelperText>
               </FormControl>
-
-              {/* Optional time picker */}
-              <FormControl sx={{ mt: 2 }}>
-                <Checkbox
-                  checked={useCustomTime}
-                  onChange={e => handleUseCustomTimeChange(e.target.checked)}
-                  overlay
-                  label={t('choreEdit.setSpecificTime')}
-                />
-                <FormHelperText>
-                  {useCustomTime
-                    ? t('choreEdit.dueAtSpecifiedTime')
-                    : t('choreEdit.dueEndOfDay')}
-                </FormHelperText>
-              </FormControl>
-
-              {useCustomTime && (
-                <Box sx={{ mt: 2, ml: 4 }}>
-                  <Typography level='body-sm' mb={1}>
-                    {t('choreEdit.timeLabel')}
-                  </Typography>
-                  <Input
-                    type='time'
-                    value={dueTime || '18:00'}
-                    onChange={handleDueTimeChange}
-                    sx={{ maxWidth: 200 }}
-                  />
-                </Box>
-              )}
             </>
           )}
         </Box>
