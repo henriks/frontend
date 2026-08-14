@@ -2,7 +2,7 @@ name: Rebase onto upstream
 
 on:
   schedule:
-    - cron: '15 2 * * *'
+    - cron: '15 * * * *'
   workflow_dispatch:
 
 permissions:
